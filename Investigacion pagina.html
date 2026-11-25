@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Control térmico de horno SMD</title>
+<style>
+:root{--bg:#0b0b0d;--panel:#17171b;--panel2:#202026;--red:#e32636;--white:#f4f4f5;--muted:#b8b8c0;--line:#38383f;--blue:#64a9ff}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--white);font:16px/1.55 Arial,sans-serif}
+header{padding:38px 7%;background:linear-gradient(120deg,#09090b,#241014);border-bottom:2px solid var(--red)}
+header h1{margin:0 0 8px;font-size:clamp(25px,4vw,42px)}header p{margin:0;color:var(--muted)}
+main{max-width:1120px;margin:auto;padding:28px 20px 60px}
+nav{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 24px}
+nav a{color:var(--white);text-decoration:none;background:var(--panel);border:1px solid var(--line);padding:8px 13px;border-radius:8px}
+section,.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:20px;margin:18px 0}
+h2{margin-top:0;border-left:4px solid var(--red);padding-left:12px}
+h3{margin-bottom:8px;color:#fff}.muted,small{color:var(--muted)}
+.formula{background:#09090b;border:1px solid #34343b;border-radius:8px;padding:14px;margin:12px 0;font-family:Georgia,serif;font-size:18px;overflow-x:auto}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}
+label{display:block;font-size:14px;color:var(--muted);margin:10px 0 4px}
+input[type=number]{width:100%;background:#09090b;color:white;border:1px solid var(--line);border-radius:7px;padding:9px}
+button{background:var(--red);color:white;border:0;border-radius:8px;padding:11px 18px;font-weight:bold;cursor:pointer;margin-top:14px}
+canvas{width:100%;height:300px;background:#0a0a0c;border:1px solid var(--line);border-radius:8px;margin-top:12px}
+.metrics{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.metric{background:var(--panel2);padding:13px;border-radius:8px}.metric b{display:block;font-size:22px;margin-top:5px}
+.note{border-left:3px solid var(--red);padding:10px 14px;background:#211216;color:#eee}
+footer{text-align:center;color:var(--muted);padding:20px}
+@media(max-width:600px){section{padding:15px}canvas{height:260px}}
+</style>
+</head>
+<body>
+<header>
+<h1>Control térmico en hornos industriales de reflujo SMD</h1>
+<p>Modelo térmico de primer orden · Controlador PI · Simulación interactiva</p>
+</header>
+<main>
+<nav>
+<a href="#contexto">Contexto</a><a href="#modelo">Modelo matemático</a><a href="#control">Control PI</a><a href="#simulador">Simulador</a><a href="#resultados">Resultados</a>
+</nav>
+
+<section id="contexto">
+<h2>1. Contexto industrial</h2>
+<p>Un horno de reflujo SMD calienta de forma controlada las tarjetas electrónicas para fundir la pasta de soldadura y formar uniones eléctricas y mecánicas. La temperatura debe regularse para evitar perfiles térmicos inadecuados.</p>
+<div class="grid">
+<div class="card"><h3>Planta</h3><p class="muted">Zona térmica equivalente del horno.</p></div>
+<div class="card"><h3>Sensor</h3><p class="muted">Mide la temperatura de la zona controlada.</p></div>
+<div class="card"><h3>Controlador</h3><p class="muted">Control PI que compara la referencia con la medición.</p></div>
+<div class="card"><h3>Actuador</h3><p class="muted">Calentador eléctrico con potencia limitada entre 0 y 100 %.</p></div>
+</div>
+</section>
+
+<section id="modelo">
+<h2>2. Modelo matemático</h2>
+<p>Se utiliza un modelo concentrado de balance de energía. La temperatura se considera uniforme en una zona térmica equivalente.</p>
+<div class="formula">C<sub>th</sub> dT/dt = P<sub>max</sub>u(t) − [T(t) − T<sub>a</sub>]/R<sub>th</sub> + Q<sub>d</sub>(t)</div>
+<p>En variables de desviación y sin perturbación, la función de transferencia es:</p>
+<div class="formula">G(s) = ΔT(s)/ΔU(s) = P<sub>max</sub>R<sub>th</sub> / (R<sub>th</sub>C<sub>th</sub>s + 1) = K/(τs+1)</div>
+<div class="grid">
+<div><b>Ganancia:</b><div class="formula">K = P<sub>max</sub>R<sub>th</sub></div></div>
+<div><b>Constante de tiempo:</b><div class="formula">τ = R<sub>th</sub>C<sub>th</sub></div></div>
+</div>
+<p class="note">Los valores iniciales son supuestos de simulación para estudiar el método. No representan especificaciones certificadas de un horno comercial.</p>
+</section>
+
+<section id="control">
+<h2>3. Controlador PI</h2>
+<div class="formula">e(t) = T<sub>ref</sub>(t) − T(t)</div>
+<div class="formula">u(t) = K<sub>p</sub>e(t) + K<sub>i</sub> ∫e(t)dt</div>
+<p>La señal de control se limita al intervalo 0 ≤ u ≤ 1. La integración condicional anti-windup evita seguir acumulando el error cuando el actuador está saturado y el error empuja en la misma dirección.</p>
+<p>Para realimentación unitaria, la función de transferencia de lazo cerrado es:</p>
+<div class="formula">T<sub>CL</sub>(s) = K(K<sub>p</sub>s + K<sub>i</sub>) / [τs² + (1+KK<sub>p</sub>)s + KK<sub>i</sub>]</div>
+</section>
+
+<section id="simulador">
+<h2>4. Simulador interactivo</h2>
+<p class="muted">El simulador usa integración de Euler con paso de 2 segundos y las mismas ecuaciones y regla anti-windup del script de GNU Octave. El caso inicial no incluye perturbación, para permitir una comparación directa.</p>
+<div class="grid">
+<div><label>Resistencia térmica R (°C/W)</label><input id="R" type="number" min="0.1" max="2" step="0.05" value="0.8"></div>
+<div><label>Capacidad térmica C (J/°C)</label><input id="C" type="number" min="1000" max="30000" step="500" value="12000"></div>
+<div><label>Potencia máxima P (W)</label><input id="P" type="number" min="500" max="5000" step="100" value="2000"></div>
+<div><label>Temperatura ambiente Ta (°C)</label><input id="Ta" type="number" min="0" max="50" step="1" value="25"></div>
+<div><label>Referencia Tref (°C)</label><input id="Tref" type="number" min="30" max="250" step="5" value="180"></div>
+<div><label>Kp</label><input id="Kp" type="number" min="0.001" max="0.2" step="0.001" value="0.02"></div>
+<div><label>Ki</label><input id="Ki" type="number" min="0.000001" max="0.001" step="0.000001" value="0.00005"></div>
+<div><label>Perturbación Qd (W)</label><input id="Qd" type="number" min="-500" max="500" step="10" value="0"></div>
+</div>
+<button onclick="simulate()">Actualizar simulación</button>
+<div class="metrics" id="metrics"></div>
+<h3>Temperatura del horno</h3><canvas id="tempChart" width="1000" height="360"></canvas>
+<h3>Señal de control</h3><canvas id="controlChart" width="1000" height="300"></canvas>
+</section>
+
+<section id="resultados">
+<h2>5. Resultados y análisis</h2>
+<p>En la configuración inicial, el lazo abierto aplica una potencia fija calculada para el punto nominal, pero no corrige desviaciones. El lazo cerrado modifica la potencia mediante el PI para reducir el error de temperatura.</p>
+<p>La estabilidad teórica del modelo lineal se evalúa a partir de los polos de la función de transferencia de lazo cerrado. Para los parámetros iniciales del proyecto, el denominador es 9600s² + 33s + 0.08 y sus polos tienen parte real negativa.</p>
+<p class="note">La comparación definitiva debe realizarse ejecutando el script de GNU Octave y esta página con idénticos parámetros, tiempo de simulación, condición inicial y perturbación. Las diferencias numéricas pequeñas pueden deberse al redondeo.</p>
+</section>
+<footer>Proyecto académico · Control térmico de horno de reflujo SMD</footer>
+</main>
+<script>
+function val(id){return Number(document.getElementById(id).value)}
+function simulate(){
+ const R=val('R'), C=val('C'), P=val('P'), Ta=val('Ta'), ref=val('Tref'), kp=val('Kp'), ki=val('Ki'), Q=val('Qd');
+ const dt=2, end=14400, n=Math.floor(end/dt)+1, K=P*R, tau=R*C;
+ let open=Ta, closed=Ta, integral=0, uOpen=0, uClosed=0;
+ const t=[], a=[], b=[], ua=[], ub=[];
+ const fixed=Math.max(0,Math.min(1,(ref-Ta)/K));
+ for(let i=0;i<n;i++){
+   const sec=i*dt; t.push(sec/60); a.push(open); b.push(closed); ua.push(uOpen*100); ub.push(uClosed*100);
+   if(i===n-1) break;
+   uOpen=fixed;
+   open += dt*(P*uOpen-(open-Ta)/R+Q)/C;
+   const error=ref-closed;
+   const before=kp*error+integral;
+   uClosed=Math.max(0,Math.min(1,before));
+   if((before>=0 && before<=1)||(before>1 && error<0)||(before<0 && error>0)) integral += ki*error*dt;
+   uClosed=Math.max(0,Math.min(1,kp*error+integral));
+   closed += dt*(P*uClosed-(closed-Ta)/R+Q)/C;
+ }
+ draw('tempChart',t,[a,b,Array(n).fill(ref)],['Lazo abierto','Lazo cerrado PI','Referencia'],['#ff4b55','#64a9ff','#eeeeee'],'Temperatura (°C)');
+ draw('controlChart',t,[ua,ub],['Lazo abierto','Lazo cerrado PI'],['#ff4b55','#64a9ff'],'Potencia (%)');
+ document.getElementById('metrics').innerHTML=
+ `<div class="metric">Ganancia K<b>${K.toFixed(2)}</b></div>
+ <div class="metric">Constante τ<b>${tau.toFixed(0)} s</b></div>
+ <div class="metric">Temperatura final abierta<b>${open.toFixed(2)} °C</b></div>
+ <div class="metric">Temperatura final cerrada<b>${closed.toFixed(2)} °C</b></div>
+ <div class="metric">Error final<b>${(ref-closed).toFixed(2)} °C</b></div>
+ <div class="metric">Mando fijo<b>${(fixed*100).toFixed(2)} %</b></div>`;
+}
+function draw(id,x,series,names,colors,ylabel){
+ const c=document.getElementById(id),ctx=c.getContext('2d'),w=c.width,h=c.height;
+ ctx.clearRect(0,0,w,h);
+ const all=series.flat(), ymin=Math.min(0,...all), ymax=Math.max(...all)*1.08+1;
+ const L=65,R=20,T=20,B=45,pw=w-L-R,ph=h-T-B;
+ ctx.strokeStyle='#555';ctx.fillStyle='#ddd';ctx.lineWidth=1;ctx.font='14px Arial';
+ for(let j=0;j<=5;j++){let y=T+ph*j/5;ctx.beginPath();ctx.moveTo(L,y);ctx.lineTo(w-R,y);ctx.stroke();let v=ymax-(ymax-ymin)*j/5;ctx.fillText(v.toFixed(0),8,y+4)}
+ for(let j=0;j<=6;j++){let x=L+pw*j/6;ctx.beginPath();ctx.moveTo(x,T);ctx.lineTo(x,T+ph);ctx.stroke();ctx.fillText(String(Math.round((j/6)*240)),x-8,T+ph+18)}
+ series.forEach((s,k)=>{ctx.strokeStyle=colors[k];ctx.lineWidth=2;ctx.setLineDash(k===0&&names.length>2?[8,5]:[]);ctx.beginPath();s.forEach((v,i)=>{let px=L+pw*i/(s.length-1),py=T+ph*(ymax-v)/(ymax-ymin);if(i===0)ctx.moveTo(px,py);else ctx.lineTo(px,py)});ctx.stroke()});
+ ctx.setLineDash([]);ctx.fillStyle='#eee';ctx.fillText(ylabel,8,14);
+ let lx=L;names.forEach((name,i)=>{ctx.fillStyle=colors[i];ctx.fillRect(lx,T+5,22,3);ctx.fillStyle='#eee';ctx.fillText(name,lx+28,T+10);lx+=Math.max(150,name.length*9+45)});
+ ctx.fillText('Tiempo (min)',w/2-35,h-8);
+}
+simulate();
+</script>
+</body>
+</html>
